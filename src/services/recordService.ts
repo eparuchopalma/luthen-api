@@ -27,16 +27,32 @@ class RecordService {
       if (type !== RecordType.credit) await testBalance(fund_id!, payload);
 
       await Record!.create(payload, { transaction });
-      await Fund!.increment({
+      
+      const data = [];
+      const fund = await Fund!.increment({
         balance: amount
-      }, { where: { id: fund_id, user_id }, transaction });
-      
-      if (type === RecordType.fund2fund) await Fund!.increment({
-        balance: -Number(amount)
-      }, { transaction, where: { id: correlated_fund_id, user_id }});
-      
+      }, { where: { id: fund_id, user_id }, transaction })
+        .then(result => {
+          const [fund] = result.flat(2) as [fundModel, number];
+          delete fund.user_id;
+          return fund;
+        })
+
+      data.push(fund);
+
+      if (type === RecordType.fund2fund) {
+        const correlatedFund = await Fund!.increment({
+          balance: -Number(amount)
+        }, { transaction, where: { id: correlated_fund_id, user_id }})
+          .then(result => {
+            const [correlatedFund] = result.flat(2) as [fundModel, number];
+            delete correlatedFund.user_id
+            return correlatedFund;
+          })
+        data.push(correlatedFund);
+      }
       await transaction.commit();
-      return;
+      return data;
     } catch (error) {
       await transaction.rollback();
       throw error;
@@ -50,24 +66,41 @@ class RecordService {
     if (!record) throw new EmptyResultError('Record not found.');
     const transaction = await sequelize.transaction();
     try {
+      const data = [];
       const { amount, correlated_fund_id, fund_id, type } = record.dataValues;
       if (type === RecordType.credit) {
         await testBalance(fund_id, record.dataValues, false);
       } else if (type === RecordType.fund2fund) {
         await testBalance(correlated_fund_id, record.dataValues, false);
-        await Fund!.increment({ balance: amount}, {
-        where: {
-          id: record.dataValues.correlated_fund_id,
-          user_id: payload.user_id
-        }, transaction });
+        const correlatedFund = await Fund!.increment({ balance: amount}, {
+          where: {
+            id: record.dataValues.correlated_fund_id,
+            user_id: payload.user_id
+          }, transaction })
+            .then(result => {
+              const [correlatedFund] = result.flat(2) as [fundModel, number];
+              delete correlatedFund.user_id;
+              return correlatedFund;
+            })
+
+          data.push(correlatedFund);
+
       }
-      await Fund!.increment({ balance: -Number(amount)}, {
+
+      const fund = await Fund!.increment({ balance: -Number(amount)}, {
         where: {
           id: record.dataValues.fund_id,
           user_id: payload.user_id
-        }, transaction });
+        }, transaction })
+          .then(result => {
+            const [fund] = result.flat(2) as [fundModel, number];
+            delete fund.user_id;
+            return fund;
+          })
+      data.push(fund);
       await record.destroy({ transaction });
       await transaction.commit();
+      return data;
     } catch (error) {
       transaction.rollback();
       throw error;

@@ -20,14 +20,14 @@ function updateRecordHandler(req: Request, res: Response, next: NextFunction) {
 function createRecordHandler(req: Request, res: Response, next: NextFunction) {
   const payload = req.body;
   create(payload)
-    .then(() => res.sendStatus(201))
+    .then((data) => res.status(201).json(data))
     .catch((error) => next(error))
 }
 
 function deleteRecordHandler(req: Request, res: Response, next: NextFunction) {
   const payload = { ...req.body, id: req.params.id };
   destroy(payload)
-    .then(() => res.sendStatus(204))
+    .then((data) => res.status(200).json(data))
     .catch((error) => next(error))
 }
 

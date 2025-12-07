@@ -24,7 +24,7 @@ class Fund extends Model {
   balance!: number;
 
   @Column({ allowNull: false })
-  user_id!: string;
+  user_id?: string;
   
   @Default(false)
   @Column({ allowNull: false })
