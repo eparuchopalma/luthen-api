@@ -133,7 +133,10 @@ class RecordService {
     if (onlyTextKeys) {
       const data = await recordStored.update(payload);
       delete data.dataValues.user_id
-      return data.dataValues
+      return {
+        record: data.dataValues,
+        funds: []
+      }
     }
 
     if (payload.date) await testDate(payload.date, payload.user_id!);
