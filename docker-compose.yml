@@ -1,8 +1,8 @@
 services:
-  squirrel_DB:
+  luthen_DB:
     image: postgres:15
     environment:
-      POSTGRES_DB: squirrel
+      POSTGRES_DB: luthen
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: root
     ports:

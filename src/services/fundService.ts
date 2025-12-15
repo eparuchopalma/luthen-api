@@ -8,13 +8,15 @@ const { Fund, Record } = sequelize.models;
 type Payload = Partial<fundModel>;
 
 class FundService {
-  public async create(payload: Payload) {
+  constructor() {}
+
+  async create(payload: Payload) {
     const data = await Fund!.create(payload, { raw: true });
     delete data.dataValues.user_id;
-    return data;
+    return [data];
   }
 
-  public async destroy({ id, user_id }: Payload) {
+  async destroy({ id, user_id }: Payload) {
     const fund = await Fund!.findOne({ where: { id, user_id } });
     if (!fund) throw new EmptyResultError('Fund not found');
     if (fund.dataValues.is_main) throw new ValidationError(
@@ -38,7 +40,7 @@ class FundService {
     } 
   }
 
-  public async read({ user_id }: Payload) {
+  async read({ user_id }: Payload) {
     const funds = await Fund!.findAll({
       attributes: { exclude: ['user_id'] },
       order: [['name', 'ASC']],
@@ -46,10 +48,10 @@ class FundService {
       where: { user_id },
     });
     if (funds.length) return funds;
-    else return this.create({ name: 'Main', is_main: true, user_id, balance: 0 })
+    else return this.create( { name: 'Main', is_main: true, user_id, balance: 0 })
   }
 
-  public async update({ id, user_id, ...fields }: Payload) {
+  async update({ id, user_id, ...fields }: Payload) {
     const fund = await Fund!.findOne({ where: { id, user_id } });
     if (!fund) throw new EmptyResultError('Fund not found');
     else return fund.update(fields);

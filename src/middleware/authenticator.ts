@@ -1,15 +1,12 @@
 import { Request, Response, NextFunction } from 'express-serve-static-core';
+const { auth } = require('express-oauth2-jwt-bearer');
+const { authOptions } = require('../config')
+const { audience, issuerBaseURL, tokenSigningAlg } = authOptions
 
-function privateAuth(req: Request, res: Response, next: NextFunction) {
-  return res.sendStatus(401);
-};
-
-function publicAuth(req: Request, res: Response, next: NextFunction) {
-  req.body = { ...req.body, user_id: process.env.DEMO_USER! };
+const setUser = (req: Request & { auth?: { payload: { sub: string } } }, res: Response, next: NextFunction) => {
+  const user_id = req.auth?.payload?.sub ?? process.env.DEMO_USER!;
+  req.body = { ...req.body, user_id };
   next();
 };
 
-export default function authenticator(req: Request, res: Response, next: NextFunction) {
-  if (req.path.includes('public')) return publicAuth(req, res, next);
-  else return privateAuth(req, res, next);
-}
+export default [auth({ audience, issuerBaseURL, tokenSigningAlg }), setUser];

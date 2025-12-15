@@ -9,3 +9,9 @@ export const dbOptions = {
   port: Number(process.env.DB_PORT),
   username: process.env.DB_USER,
 };
+
+export const authOptions = {
+  audience: process.env.AUTH0_AUDIENCE,
+  issuerBaseURL: process.env.AUTH0_ISSUER,
+  tokenSigningAlg: process.env.AUTH0_SIGNING_ALG
+}

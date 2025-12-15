@@ -2,7 +2,6 @@ import { ValidationError, EmptyResultError, Op, Transaction } from 'sequelize';
 import sequelize from '../config/sequelize';
 import recordModel from '../models/recordModel';
 import fundModel from '../models/fundModel';
-import e from 'express';
 
 type Payload = Partial<recordModel>;
 
