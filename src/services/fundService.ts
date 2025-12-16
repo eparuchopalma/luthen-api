@@ -13,7 +13,7 @@ class FundService {
   async create(payload: Payload) {
     const data = await Fund!.create(payload, { raw: true });
     delete data.dataValues.user_id;
-    return [data];
+    return data;
   }
 
   async destroy({ id, user_id }: Payload) {
@@ -48,7 +48,7 @@ class FundService {
       where: { user_id },
     });
     if (funds.length) return funds;
-    else return this.create( { name: 'Main', is_main: true, user_id, balance: 0 })
+    else return [await this.create( { name: 'Main', is_main: true, user_id, balance: 0 })]
   }
 
   async update({ id, user_id, ...fields }: Payload) {

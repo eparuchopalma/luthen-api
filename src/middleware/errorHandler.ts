@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ConnectionError, ValidationError, EmptyResultError } from 'sequelize';
 
 function errorLogger(error: Error, req: Request, res: Response, next: NextFunction) {
-  console.error(error.message);
+  console.error(error);
   next(error);
 }
 
