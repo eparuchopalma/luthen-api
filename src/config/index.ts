@@ -13,5 +13,7 @@ export const dbOptions = {
 export const authOptions = {
   audience: process.env.AUTH0_AUDIENCE,
   issuerBaseURL: process.env.AUTH0_ISSUER,
-  tokenSigningAlg: process.env.AUTH0_SIGNING_ALG
+  tokenSigningAlg: process.env.AUTH0_SIGNING_ALG,
+  clientID: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET
 }
