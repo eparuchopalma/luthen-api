@@ -62,7 +62,7 @@ class RecordService {
     const record = await Record!.findOne({
       where: { id: payload.id, user_id: payload.user_id }
     });
-    if (!record) throw new EmptyResultError('Record not found.');
+    if (!record) throw new EmptyResultError('Registro no encontrado.');
     const transaction = await sequelize.transaction();
     try {
       const data = [];
@@ -121,10 +121,10 @@ class RecordService {
     const recordStored = await Record!.findOne({
       where: { id: payload.id, user_id: payload.user_id }
     }) as recordModel;
-    if (!recordStored) throw new EmptyResultError('Record not found.');
+    if (!recordStored) throw new EmptyResultError('Registro original no encontrado.');
 
     const updateKeys = getUpdateKeys(recordStored.dataValues, payload);
-    if (updateKeys.length === 0) throw new ValidationError('Nothing to update.', []);
+    if (updateKeys.length === 0) throw new ValidationError('Nada que actualizar.', []);
 
     const textKeys = ['note', 'tag'];
     const onlyTextKeys = updateKeys.every(key => textKeys.includes(key));
@@ -147,7 +147,7 @@ class RecordService {
       const type = payload.type ?? recordStored.dataValues.type;
       if (type === RecordType.credit && (payload.fund_id || payload.type)) {
         const fund = payloadFund ?? await validateFund(recordStored.dataValues.fund_id, payload.user_id!);
-        if (!fund.dataValues.is_main) throw new ValidationError('Credit records must be associated to main fund.', []);
+        if (!fund.dataValues.is_main) throw new ValidationError('Los créditos deben asociarse al fondo principal.', []);
       }
     }
 
@@ -180,10 +180,15 @@ class RecordService {
 }
 
 function formatDate(date: Date) {
-  return new Date(date).toUTCString();
+  return new Intl
+    .DateTimeFormat('es-VE', { weekday: "long", year: "numeric", month: "short", day: "numeric", hour: '2-digit', minute: '2-digit' })
+    .format(new Date(date))
 }
 
-function fixAmount(amount: number) {
+function formatAmount(amount: number) {
+  return new Intl
+    .NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+    .format(amount)
   return Number(amount).toFixed(2);
 }
 
@@ -194,32 +199,32 @@ async function testDate(date: Date, user_id: string) {
 
 function checkAmount(payload: Payload) {
   if (payload.type === RecordType.credit && Number(payload.amount) <= 0) {
-    throw new ValidationError('Amount must be positive for credit.', []);
+    throw new ValidationError('El monto debe ser positivo para créditos.', []);
   } else if (payload.type !== RecordType.credit && Number(payload.amount) >= 0) {
-    throw new ValidationError('Amount must be negative for debit and fund2fund.', []);
+    throw new ValidationError('El monto debe ser negativo para débitos.', []);
   }
 }
 
 function checkCorrelatedFund(payload: Payload) {
   if (payload.type === RecordType.fund2fund && !payload.correlated_fund_id) {
-    throw new ValidationError('A correlated fund is required for fund2fund.', []);
+    throw new ValidationError('Para el tipo de registro, es requerido el campo de fondo correlacionado.', []);
   } else if (payload.type !== RecordType.fund2fund && payload.correlated_fund_id) {
-    throw new ValidationError('Correlated fund is only allowed for fund2fund.', []);
+    throw new ValidationError('El campo de fondo correlacionado solo es permitido para registros de fondo a fondo.', []);
   } else if (payload.fund_id === payload.correlated_fund_id) {
-    throw new ValidationError('Funds cannot be equal.', []);
+    throw new ValidationError('Los fondos tienen el mismo valor.', []);
   }
   return;
 }
 
 function checkFutureDate(date: Date) {
   if (new Date(date) > new Date()) {
-    throw new ValidationError('Date cannot be in future.', []);
+    throw new ValidationError('La fecha no puede estar indicada en el futuro.', []);
   } else return;
 }
 
 async function checkDateIsFree({ date, user_id }: { date: Date, user_id: string }) {
   const recordOnDate = await Record!.findOne({ where: { date, user_id } });
-  if (recordOnDate) throw new ValidationError('Date already taken.', []);
+  if (recordOnDate) throw new ValidationError('La fecha indicada ya posee un registro.', []);
 }
 
 function handleBalanceUpdate(
@@ -280,9 +285,10 @@ async function testBalance(fund_id: string, payload: Payload, includingPayload =
     const result = balance + (receivesFromFund ? -Number(r.amount) : Number(r.amount));
 
     if (result < 0) {
-      const message = `\nOn ${formatDate(r.date!)}, ` +
-        `fund's balance (${fixAmount(balance)}) ` +
-        `couldn't cover the amount of ${fixAmount(r.amount!)}.`;
+      const message = `Esto afecta la consistencia de sus registros.
+      \El ${formatDate(r.date!)}, ` +
+        `el balance del fondo (${formatAmount(balance)}) ` +
+        `no pudiera cubrir un registro de ${formatAmount(r.amount!)}.`;
       throw new ValidationError(message, []);
     }
 
@@ -345,13 +351,13 @@ function setFundFilter(filters: any) {
 
 async function validateFund(id: string, user_id: string) {
   const fund = await Fund!.findOne({ where: { id, user_id } });
-  if (!fund) throw new EmptyResultError('Fund not found.');
+  if (!fund) throw new EmptyResultError('Fondo no encontrado.');
   return fund;
 }
 
 async function validateCorrelated(id: string, user_id: string) {
   const correlatedFund = await Fund!.findOne({ where: { id, user_id } });
-  if (!correlatedFund) throw new EmptyResultError('Correlated fund not found.');
+  if (!correlatedFund) throw new EmptyResultError('Fondo no encontrado.');
   return correlatedFund;
 }
 
