@@ -157,15 +157,12 @@ class RecordService {
 
     checkAmount(recordEdited);
     checkCorrelatedFund(recordEdited);
-    
+
     const transaction = await sequelize.transaction();
 
     try {
       const funds = await handleBalanceUpdate(recordStored.dataValues, recordEdited, transaction)
-        .then((result) => result.flat(3)
-        .filter(f => isNaN(f as any)) as fundModel[]
-      );
-      funds.forEach((f: any) => delete f.user_id);
+      if (fundModel.length) funds.forEach((f: any) => delete f.user_id);
       const record = await recordStored.update(payload, { transaction });
       delete record.dataValues.user_id;
       await transaction.commit();
@@ -227,21 +224,26 @@ async function checkDateIsFree({ date, user_id }: { date: Date, user_id: string 
   if (recordOnDate) throw new ValidationError('La fecha indicada ya posee un registro.', []);
 }
 
-function handleBalanceUpdate(
+async function handleBalanceUpdate(
   original: recordModel,
   payload: recordModel,
   transaction: Transaction
 ) {
-  const fundsToUpdate = [original.fund_id];
 
-  if (original.correlated_fund_id) fundsToUpdate.push(original.correlated_fund_id);
-  if (!fundsToUpdate.includes(payload.fund_id)) fundsToUpdate.push(payload.fund_id);
-  if (payload.correlated_fund_id && !fundsToUpdate.includes(payload.correlated_fund_id)) {
-    fundsToUpdate.push(payload.correlated_fund_id);
+  const fundsToTest = [original.fund_id];
+
+  if (original.correlated_fund_id) fundsToTest.push(original.correlated_fund_id);
+  if (!fundsToTest.includes(payload.fund_id)) fundsToTest.push(payload.fund_id);
+  if (payload.correlated_fund_id && !fundsToTest.includes(payload.correlated_fund_id)) fundsToTest.push(payload.correlated_fund_id);
+
+  const updatedFunds = [];
+
+  for (const fundID of fundsToTest) {
+    const updatedFund = await updateFundBalance(fundID, original, payload, transaction)
+    if (updatedFund) updatedFunds.push(updatedFund);
   }
 
-  return Promise
-    .all(fundsToUpdate.map(f => updateFundBalance(f, original, payload, transaction)));
+  return updatedFunds;
 }
 
 async function updateFundBalance(
@@ -258,7 +260,7 @@ async function updateFundBalance(
 
   if (payloadDecrements || payloadDateIsNewer) await testBalance(fund_id, payload);
 
-  if (payloadDiff !== 0) return Fund!.increment({
+  if (payloadDiff !== 0) return await Fund!.increment({
     balance: payloadDiff
   }, { where: { id: fund_id }, transaction });
 
