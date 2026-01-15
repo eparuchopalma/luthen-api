@@ -138,16 +138,19 @@ class RecordService {
       }
     }
 
-    if (payload.date) await testDate(payload.date, payload.user_id!);
+    if (payload.date !== undefined) await testDate(payload.date, payload.user_id!);
 
-    if (payload.fund_id) {
+    if (payload.type !== undefined || payload.fund_id !== undefined) {
+      const type = payload.type ?? recordStored.dataValues.type;
       const payloadFund = payload.fund_id
         ? await validateFund(payload.fund_id, payload.user_id!)
         : null;
-      const type = payload.type ?? recordStored.dataValues.type;
-      if (type === RecordType.credit && (payload.fund_id || payload.type)) {
-        const fund = payloadFund ?? await validateFund(recordStored.dataValues.fund_id, payload.user_id!);
-        if (!fund.dataValues.is_main) throw new ValidationError('Los créditos deben asociarse al fondo principal.', []);
+
+      if (type === RecordType.credit) {
+        const fund = payloadFund || await validateFund(recordStored.dataValues.fund_id, payload.user_id!);
+        if (!fund.dataValues.is_main) {
+          throw new ValidationError('Los créditos deben asociarse al fondo principal.', []);
+        }
       }
     }
 
@@ -161,8 +164,7 @@ class RecordService {
     const transaction = await sequelize.transaction();
 
     try {
-      const funds = await handleBalanceUpdate(recordStored.dataValues, recordEdited, transaction)
-      if (fundModel.length) funds.forEach((f: any) => delete f.user_id);
+      const funds = await handleBalanceUpdate(recordStored.dataValues, recordEdited, transaction);
       const record = await recordStored.update(payload, { transaction });
       delete record.dataValues.user_id;
       await transaction.commit();
@@ -239,8 +241,12 @@ async function handleBalanceUpdate(
   const updatedFunds = [];
 
   for (const fundID of fundsToTest) {
-    const updatedFund = await updateFundBalance(fundID, original, payload, transaction)
-    if (updatedFund) updatedFunds.push(updatedFund);
+    const response = await updateFundBalance(fundID, original, payload, transaction)
+    if (response) {
+      const updatedFund = response.flat(2)[0] as fundModel;
+      delete updatedFund?.user_id;
+      updatedFunds.push(updatedFund);
+    }
   }
 
   return updatedFunds;
