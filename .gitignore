@@ -1,8 +1,8 @@
+dist
 node_modules
 postgres_data
 
 .env.development
 .env.production
 
-.dist
 .vscode

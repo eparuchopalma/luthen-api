@@ -20,7 +20,7 @@ function destroyFundHandler(req: Request, res: Response, next: NextFunction) {
 function readFundHandler(req: Request, res: Response, next: NextFunction) {
   const payload = req.body;
   fundService.read(payload)
-    .then((data) => res.json(data))
+    .then((data) => res.status(200).json(data))
     .catch((error: Error) => next(error))
 }
 

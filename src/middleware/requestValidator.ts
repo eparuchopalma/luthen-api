@@ -6,7 +6,7 @@ import Record from '../models/recordModel';
 type PayloadKey = 'body' | 'params' | 'query';
 type Entity = Fund | Record;
 
-const includesScript = (req: Request, keys: PayloadKey[]) => keys.some((key) => {
+const findScript = (req: Request, keys: PayloadKey[]) => keys.some((key) => {
   return JSON.stringify(req[key])?.includes('<script>')
 });
 
@@ -29,8 +29,9 @@ function validate(schemaValidator: SchemaValidator<Entity>) {
   return (req: Request, res: Response, next: NextFunction) => {
 
     const payloadKeys = Object.keys(schemaValidator) as PayloadKey[];
+    const includesScript = findScript(req, payloadKeys);
 
-    if (includesScript(req, payloadKeys)) return res
+    if (includesScript) return res
       .status(400)
       .json({ message: 'Invalid input' });
 

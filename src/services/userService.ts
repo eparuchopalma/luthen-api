@@ -1,9 +1,9 @@
-import { authOptions } from '../config';
+import { authConfig } from '../config';
 import sequelize from '../config/sequelize';
 
 import axios from 'axios';
 
-const { clientID, clientSecret, issuerBaseURL: domain } = authOptions;
+const { clientID, clientSecret, issuerBaseURL: domain } = authConfig;
 
 const { Fund } = sequelize.models;
 

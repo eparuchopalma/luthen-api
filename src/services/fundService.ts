@@ -19,8 +19,8 @@ class FundService {
   async destroy({ id, user_id }: Payload) {
     const fund = await Fund!.findOne({ where: { id, user_id } });
     if (!fund) throw new EmptyResultError('Fondo no encontrado');
-    if (fund.dataValues.is_main) throw new ValidationError(
-      'El fondo principal no debe ser eliminado', []);
+    if (fund.dataValues.is_main)
+      throw new ValidationError('El fondo principal no debe ser eliminado', []);
 
     const mainFund = await Fund!.findOne({ where: { user_id, is_main: true }});
     if (!mainFund) throw new EmptyResultError('Fondo principal no encontrado');

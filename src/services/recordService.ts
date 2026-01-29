@@ -26,7 +26,7 @@ class RecordService {
       if (type !== RecordType.credit) await testBalance(fund_id!, payload);
 
       await Record!.create(payload, { transaction });
-      
+
       const data = [];
       const fund = await Fund!.increment({
         balance: amount
@@ -59,10 +59,11 @@ class RecordService {
   }
 
   public async destroy(payload: Payload) {
-    const record = await Record!.findOne({
-      where: { id: payload.id, user_id: payload.user_id }
-    });
+    const record = await Record!
+      .findOne({ where: { id: payload.id, user_id: payload.user_id } });
+
     if (!record) throw new EmptyResultError('Registro no encontrado.');
+
     const transaction = await sequelize.transaction();
     try {
       const data = [];
@@ -80,7 +81,7 @@ class RecordService {
               const [correlatedFund] = result.flat(2) as [fundModel, number];
               delete correlatedFund.user_id;
               return correlatedFund;
-            })
+            });
 
           data.push(correlatedFund);
 
@@ -96,6 +97,7 @@ class RecordService {
             delete fund.user_id;
             return fund;
           })
+
       data.push(fund);
       await record.destroy({ transaction });
       await transaction.commit();

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express-serve-static-core';
 const { auth } = require('express-oauth2-jwt-bearer');
-const { authOptions } = require('../config')
-const { audience, issuerBaseURL, tokenSigningAlg } = authOptions
+const { authConfig } = require('../config')
+const { audience, issuerBaseURL, tokenSigningAlg } = authConfig
 
 const checkAuth = auth({ audience, issuerBaseURL, tokenSigningAlg });
 
