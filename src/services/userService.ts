@@ -1,9 +1,11 @@
 import { authConfig } from '../config';
+import RedisClient from '../config/redis';
 import sequelize from '../config/sequelize';
 
 import axios from 'axios';
 
 const { clientID, clientSecret, issuerBaseURL: domain } = authConfig;
+const redisClient = new RedisClient;
 
 const { Fund } = sequelize.models;
 
@@ -18,6 +20,7 @@ class UserService {
         headers: { 'Authorization': `Bearer ${accessToken}` },
 			});
       if (userDeleted.status >= 400) throw new Error('Error deleting user');
+      await redisClient.delete(user_id);
 			return await Fund!.destroy({ where: { user_id } });
 		} catch (error) {
 			await transaction.rollback();
