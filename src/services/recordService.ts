@@ -2,7 +2,10 @@ import { ValidationError, EmptyResultError, Op, Transaction } from 'sequelize';
 import sequelize from '../config/sequelize';
 import recordModel from '../models/recordModel';
 import fundModel from '../models/fundModel';
-import { updateCache } from './fundService';
+import RedisClient from '../config/redis';
+
+const redisClient = new RedisClient;
+const { Fund, Record } = sequelize.models;
 
 type Payload = Partial<recordModel>;
 
@@ -11,8 +14,6 @@ enum RecordType {
   debit = 2,
   fund2fund = 0
 };
-
-const { Fund, Record } = sequelize.models;
 
 class RecordService {
   public async create(payload: Payload) {
@@ -51,7 +52,15 @@ class RecordService {
           })
         data.push(correlatedFund);
       }
-      await updateCache(user_id!);
+
+      const fundsOnRedis = await redisClient.read(user_id!);
+
+      for (const updatedFund of data) {
+        const index = fundsOnRedis?.findIndex(f => f.id === updatedFund.id);
+        fundsOnRedis?.splice(index!, 1, updatedFund)
+      }
+
+      await redisClient.write(user_id!, fundsOnRedis);
       await transaction.commit();
       return data;
     } catch (error) {
@@ -102,7 +111,15 @@ class RecordService {
 
       data.push(fund);
       await record.destroy({ transaction });
-      await updateCache(payload.user_id!);
+
+      const fundsOnRedis = await redisClient.read(payload.user_id!);
+
+      for (const updatedFund of data) {
+        const index = fundsOnRedis?.findIndex(f => f.id === updatedFund.id);
+        fundsOnRedis?.splice(index!, 1, updatedFund)
+      }
+
+      await redisClient.write(payload.user_id!, fundsOnRedis);
       await transaction.commit();
       return data;
     } catch (error) {
@@ -133,7 +150,7 @@ class RecordService {
 
     const textKeys = ['note', 'tag'];
     const onlyTextKeys = updateKeys.every(key => textKeys.includes(key));
-    
+
     if (onlyTextKeys) {
       const data = await recordStored.update(payload);
       delete data.dataValues.user_id
@@ -172,7 +189,19 @@ class RecordService {
       const funds = await handleBalanceUpdate(recordStored.dataValues, recordEdited, transaction);
       const record = await recordStored.update(payload, { transaction });
       delete record.dataValues.user_id;
-      if (funds.length) await updateCache(payload.user_id!);
+
+      if (funds.length) {
+        const fundsOnRedis = await redisClient.read(payload.user_id!);
+
+        for (const updatedFund of funds) {
+          const index = fundsOnRedis?.findIndex(f => f.id === updatedFund.id);
+          fundsOnRedis?.splice(index!, 1, updatedFund)
+        }
+
+        await redisClient.write(payload.user_id!, fundsOnRedis);
+
+      }
+
       await transaction.commit();
       const data = { record: record.dataValues, funds };
       return data;
@@ -194,7 +223,6 @@ function formatAmount(amount: number) {
   return new Intl
     .NumberFormat('en-US', { style: 'currency', currency: 'USD' })
     .format(amount)
-  return Number(amount).toFixed(2);
 }
 
 async function testDate(date: Date, user_id: string) {
