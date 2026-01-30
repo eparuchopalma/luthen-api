@@ -15,7 +15,7 @@ class FundService {
   async create(payload: Payload) {
     const transaction = await sequelize.transaction();
     try {
-      const data = await Fund!.create(payload, { raw: true });
+      const data = await Fund!.create(payload, { raw: true, transaction });
       delete data.dataValues.user_id;
       updateCache(payload.user_id!, undefined, transaction);
       await transaction.commit();
@@ -74,7 +74,7 @@ class FundService {
         name: 'Main', is_main: true, user_id, balance: 0
       }) as fundModel;
       await updateCache(user_id!, [mainFund], transaction);
-      transaction.commit();
+      await transaction.commit();
       return [mainFund];
     } catch (error) {
       transaction.rollback();
@@ -88,7 +88,7 @@ class FundService {
     else {
       const transaction = await sequelize.transaction();
       try {
-        const updatedFund = await fund.update(fields);
+        const updatedFund = await fund.update(fields, { transaction });
         await updateCache(user_id!, undefined, transaction);
         await transaction.commit();
         return updatedFund;
