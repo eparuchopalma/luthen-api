@@ -51,7 +51,7 @@ class RecordService {
           })
         data.push(correlatedFund);
       }
-      await updateCache(user_id!, undefined, transaction);
+      await updateCache(user_id!);
       await transaction.commit();
       return data;
     } catch (error) {
@@ -102,7 +102,7 @@ class RecordService {
 
       data.push(fund);
       await record.destroy({ transaction });
-      await updateCache(payload.user_id!, undefined, transaction);
+      await updateCache(payload.user_id!);
       await transaction.commit();
       return data;
     } catch (error) {
@@ -172,7 +172,7 @@ class RecordService {
       const funds = await handleBalanceUpdate(recordStored.dataValues, recordEdited, transaction);
       const record = await recordStored.update(payload, { transaction });
       delete record.dataValues.user_id;
-      if (funds.length) await updateCache(payload.user_id!, undefined, transaction);
+      if (funds.length) await updateCache(payload.user_id!);
       await transaction.commit();
       const data = { record: record.dataValues, funds };
       return data;

@@ -17,7 +17,7 @@ class FundService {
     try {
       const data = await Fund!.create(payload, { raw: true, transaction });
       delete data.dataValues.user_id;
-      updateCache(payload.user_id!, undefined, transaction);
+      await updateCache(payload.user_id!);
       await transaction.commit();
       return data;
     } catch (error) {
@@ -43,7 +43,7 @@ class FundService {
       await reassignRecords(fund_id, mainFundID, transaction);
       await updateFundBalance(mainFundID, transaction);
       await fund.destroy({ transaction });
-      await updateCache(user_id!, undefined, transaction);
+      await updateCache(user_id!);
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
@@ -73,7 +73,7 @@ class FundService {
       const mainFund = await this.create({
         name: 'Main', is_main: true, user_id, balance: 0
       }) as fundModel;
-      await updateCache(user_id!, [mainFund], transaction);
+      await updateCache(user_id!, [mainFund]);
       await transaction.commit();
       return [mainFund];
     } catch (error) {
@@ -89,7 +89,7 @@ class FundService {
       const transaction = await sequelize.transaction();
       try {
         const updatedFund = await fund.update(fields, { transaction });
-        await updateCache(user_id!, undefined, transaction);
+        await updateCache(user_id!);
         await transaction.commit();
         return updatedFund;
       } catch (error) {
@@ -146,14 +146,13 @@ async function updateFundBalance(fund_id: string, transaction: Transaction) {
   return await Fund!.update({ balance }, { where: { id: fund_id }, transaction });
 }
 
-export async function updateCache(user_id: string, funds?: fundModel[], transaction?: Transaction) {
+export async function updateCache(user_id: string, funds?: fundModel[]) {
   if (funds) return await redisClient.write(user_id!, funds);
   const fundsOnDB = await Fund!.findAll({
     attributes: { exclude: ['user_id'] },
     order: [['name', 'ASC']],
     raw: true,
-    where: { user_id },
-    transaction
+    where: { user_id }
   });
   return await redisClient.write(user_id!, fundsOnDB);
 }
