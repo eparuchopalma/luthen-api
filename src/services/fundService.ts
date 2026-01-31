@@ -13,19 +13,17 @@ class FundService {
   constructor() {}
 
   async create(payload: Payload) {
-    const transaction = await sequelize.transaction();
-    try {
+    return await sequelize.transaction(async (transaction) => {
       const data = await Fund!.create(payload, { raw: true, transaction }) as fundModel;
       delete data.dataValues.user_id;
       const fundsOnRedis = await redisClient.read(payload.user_id!) as fundModel[];
-      fundsOnRedis.push(data);
-      await redisClient.write(payload.user_id!, fundsOnRedis);
-      await transaction.commit();
+      if (!fundsOnRedis) await redisClient.write(payload.user_id!, [data.dataValues]);
+      else {
+        fundsOnRedis.push(data);
+        await redisClient.write(payload.user_id!, fundsOnRedis);
+      }
       return data;
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
+    });
   }
 
   async destroy({ id, user_id }: Payload) {
@@ -73,36 +71,25 @@ class FundService {
       return fundsOnDB;
     }
 
-    const transaction = await sequelize.transaction();
-    try {
-      const mainFund = await this.create({
-        name: 'Main', is_main: true, user_id, balance: 0
-      }) as fundModel;
-      await redisClient.write(user_id!, [mainFund]);
-      await transaction.commit();
-      return [mainFund];
-    } catch (error) {
-      transaction.rollback();
-      throw error;
-    }
+    const mainFund = await this.create({
+      name: 'Main', is_main: true, user_id, balance: 0
+    }) as fundModel;
+
+    return [mainFund];
   }
 
   async update({ id, user_id, ...fields }: Payload) {
     const fund = await Fund!.findOne({ where: { id, user_id } });
     if (!fund) throw new EmptyResultError('Fondo no encontrado');
     else {
-      const transaction = await sequelize.transaction();
-      try {
+      return await sequelize.transaction(async (transaction) => {
         const updatedFund = await fund.update(fields, { transaction }) as fundModel;
         const fundsOnRedis = await redisClient.read(user_id!);
         const index = fundsOnRedis?.findIndex(f => f.id === id);
         fundsOnRedis?.splice(index!, 1, updatedFund.dataValues);
         await redisClient.write(user_id!, fundsOnRedis);
-        await transaction.commit();
         return updatedFund.dataValues;
-      } catch (error) {
-        await transaction.rollback();
-      }
+      });
     }
   }
 }
